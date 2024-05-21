@@ -92,7 +92,6 @@ The implementation of this project has yielded several positive outcomes:
 - **Actionable Insights:** Provided actionable findings that can inform public safety strategies and community planning. The insights derived from this analysis can help law enforcement and community leaders develop targeted interventions to reduce crime rates and enhance public safety.
 - **Scalable Methodology:** Developed a methodology that can be adapted and applied to other ecological and environmental datasets, showcasing the versatility and robustness of the approach. This makes the project a valuable reference for similar studies in different regions or contexts.
 
-## Getting Started
 
 ### Prerequisites
 
