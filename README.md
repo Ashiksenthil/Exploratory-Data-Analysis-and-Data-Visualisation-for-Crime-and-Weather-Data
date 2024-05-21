@@ -39,20 +39,20 @@ Through this comprehensive analysis, we strive to provide a deeper understanding
 -Simultaneously, the weather dataset was analyzed to understand daily meteorological conditions, including temperature, wind speed, humidity, and precipitation.
 -This dataset provided a day-to-day account of the weather conditions experienced in Colchester throughout 2023.
 -By exploring these datasets separately, we identified initial patterns and trends, such as the frequency of certain crime types and fluctuations in weather conditions over the year.
-**Merged Crime and Weather Datasets:**
 
+**Merged Crime and Weather Datasets:**
 -Integrated the crime and weather datasets into a unified dataset to enable a comprehensive analysis of the interplay between weather conditions and crime incidents. This involved aligning the datasets by date and location to ensure each crime incident could be matched with the corresponding weather conditions on that day.
 -This integration allowed us to examine correlations between specific weather variables (e.g., temperature, humidity) and crime rates, facilitating a deeper understanding of how environmental factors might influence criminal behavior.
+
 **Visualization**
 **Graphical Representations:**
-
 -Created bar charts to illustrate the frequency of different crime types and how they varied over time. These visualizations helped to highlight which types of crime were most prevalent and how their occurrence fluctuated throughout the year.
 -Developed violin plots to depict the distribution of crime incidents in relation to weather conditions such as temperature. These plots provided a visual representation of the density and spread of crime incidents, showing how crime rates tended to increase or decrease under different weather conditions.
+
 **Scatter Plots:**
-
 -Designed scatter plots to explore the relationship between visibility (e.g., clear vs. foggy days) and the frequency of crime incidents. These plots showed whether there was a significant correlation between reduced visibility and increased crime rates, providing insights into how weather conditions might affect the likelihood of crime.
-**Mapping Techniques:**
 
+**Mapping Techniques:**
 -Used geographic information system (GIS) techniques to create maps that visualized crime incidents against temperature gradients across different areas of Colchester. These maps helped to identify hotspots where crime rates were particularly high under certain weather conditions.
 -By overlaying crime data on temperature maps, we could see how warmer or colder areas correlated with crime frequency, offering spatial insights that could inform targeted policing and public safety strategies.
 
