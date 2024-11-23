@@ -1,0 +1,307 @@
+---
+title: "MA304 -  Data Visualisation_2309756"
+author: "MA304_2309756"
+output: html_document
+date: "2024-04-25"
+---
+# MA304 - Exploratory Data Analysis and Data Visualisation for Crime and Weather Data
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Importing the libraries for plotting graph. 
+```{r}
+#install.packages("plotly")
+# Load necessary libraries
+library(ggplot2)  # For plotting
+library(dplyr)    # For data manipulation
+library(tidyr)    # For data tidying
+library(tidyverse)
+library(maps)     # For maps visualization
+library(leaflet)  # For interactive maps
+library(plotly)
+```
+
+Importing the crime dataset into R-Studio to understand the data and analyze it further to know about the crimes that has been occured in the colchester city for the year 2023. Through the deep understanding of the data
+
+# Introduction
+
+In Colchester, throughout 2023, we gathered two significant types of data—crime incidents and weather conditions. These datasets chronicle the daily dynamics of the town, where the patterns of weather intertwine with the occurrences of crime. The crime data details every reported incident, providing insights into the nature and outcomes of each event. Simultaneously, the weather data captures daily meteorological changes, from temperature fluctuations to variations in precipitation and wind. By exploring how the weather might influence crime rates, we aim to provide a clearer understanding of the factors that affect public safety in Colchester. This analysis not only aids in comprehending the present dynamics but also assists in predicting future trends and planning effective interventions.
+
+```{r}
+#Importing the Data-set into R-Studio
+crime_data <- read.csv("D:\\MA304 -  Data Vizualization\\CSV Files\\crime23.csv")
+temp_data <- read.csv("D:\\MA304 -  Data Vizualization\\CSV Files\\temp2023.csv")
+```
+
+## Exploration of the Crime and Weather Datasets
+
+Our analysis delves into two primary datasets from Colchester, encompassing detailed crime incidents and comprehensive weather data for the year 2023. The crime dataset captures a variety of crime types, outcomes, and additional factors such as specific street locations and the nature of each crime scene. Simultaneously, the weather dataset records key meteorological variables like temperature, wind speed, and humidity, which significantly influence daily activities, potentially impacting crime rates.
+
+To facilitate a thorough examination and derive insightful correlations, we merged these two datasets into a single comprehensive resource, selectively omitting certain temperature-related data. This strategic simplification helps highlight the most relevant insights, allowing us to better understand how weather conditions might affect crime patterns in Colchester. Through this integrated approach, we aim to uncover actionable findings that can inform public safety strategies and community planning.
+
+```{r}
+# checking for NA values
+crime_na_values <- colSums(is.na(crime_data))
+crime_na_values
+
+# checking for NA values
+temp_na_values <- colSums(is.na(temp_data))
+temp_na_values
+```
+
+```{r, warning=FALSE}
+# Dropping out the context column as the whole values are NA
+crime_data <- crime_data[,-which(names(crime_data)=='context')] 
+# Dropping out the columns in temp data
+temp_data <- temp_data[,-which(names(temp_data)=="WindkmhDir")]
+temp_data <- temp_data[,-which(names(temp_data)== "PreselevHp")]
+temp_data <- temp_data[,-which(names(temp_data)== "SnowDepcm")]
+
+# Extract month and year from Date column
+temp_data$Date <- substr(temp_data$Date, start=1, stop=7)
+
+# Group by Date and calculate mean for numeric columns
+temp_data_reduced <- temp_data %>% 
+  group_by(Date) %>% 
+  summarise(across(where(is.numeric),~mean(.x, na.rm=T)))
+
+# Rename the 'Date' column to 'date' for merging the data
+names(temp_data_reduced)[names(temp_data_reduced)=="Date"] <- "date"
+
+# merges the two data frames based on the common "date" column
+final_data <- merge(crime_data, temp_data_reduced, by = "date", all.x = TRUE)
+head(final_data)
+```
+
+
+```{r, warning=FALSE}
+attach(final_data)
+table(category, location_type)
+```
+The table provides a breakdown of crime incidents across two jurisdictions in Colchester: the local police and the British Transport Police (BTP Force). It highlights that the majority of crimes, especially violent crimes, are predominantly managed by the local police, with 2,625 incidents compared to only eight under the BTP. This indicates that 99.7% of violent crime cases fall under local police jurisdiction, illustrating their broader scope compared to the BTP, which focuses more on transport-related environments. Other significant categories such as anti-social behaviour and public order also show a major discrepancy, emphasizing the specialized nature of the BTP's responsibilities.
+
+## Data Visualisation
+
+```{r,warning = FALSE, fig.align='center'}
+# Bar plot for category
+catogery_dist_bar_plot <- ggplot(crime_data, aes(x = category)) +
+  geom_bar(fill = "grey", color = "black", alpha = 1.5) +  # Customizing fill, color, and transparency
+  labs(title = "Category Distribution", x = "Category", y = "Count")+
+  theme(axis.text.x = element_text(angle = 45 , hjust = 1))  # Rotating x-axis labels for better readability
+
+catogery_dist_bar_plot # prints the bar-plot
+```
+
+The bar chart offers a comprehensive snapshot of crime data, where violent incidents notably dominate, surpassing all other categories. While less frequent, occurrences of anti-social behavior and vehicle theft are still evident. In contrast, robbery and theft from individuals register as the least common incidents. This visualization effectively summarize the crime landscape, providing valuable insights to guide law enforcement resource allocation toward addressing the most significant challenges.
+
+```{r,warning = FALSE, fig.align='center'}
+plot_data <- final_data %>%
+  group_by(date, category) %>%
+  summarise(count = n(), .groups = 'drop') # Ensuring again the data is ungrouped after the summarisation
+
+# Creating the plot using plotly
+Interaction_category_barplot <- plot_ly(data = plot_data, x = ~date, y = ~count, type = 'bar', color = ~category,
+                hoverinfo = 'text', text = ~paste("Category: ", category, "<br>Date: ", date, "<br>Count: ", count)) %>%
+  layout(title = "Number of Crimes by Category Over Time",
+         xaxis = list(title = "Date"),
+         yaxis = list(title = "Number of Crimes"),
+         barmode = 'stack',  #  using stack bars to show crime per month with category breakdown
+         hovermode = 'closest',  # Improves interaction by focusing hover info on the closest item
+         autosize = TRUE)  # Allows the plot to resize based on the viewer's device
+
+# Display the plot
+Interaction_category_barplot
+
+```
+
+
+The displayed chart shows a visual breakdown of crime categories reported monthly for the year 2023, allowing for an in-depth understanding of the frequency and timing of incidents. Violent crime consistently registers as the most frequent each month, casting a significant presence over lesser-reported crimes such as shoplifting and vehicle theft. This graphical representation arms stakeholders with a clear, chronological depiction of criminal activity, a valuable tool for developing informed, targeted approaches to enhance community safety and guide policy.
+
+```{r,warning = FALSE, fig.align='center'}
+# Count the occurrences of each outcome status
+outcome_counts <- final_data %>%
+  count(outcome_status) %>%
+  arrange(desc(n))
+
+# Create an interactive pie chart
+Interactive_Pie_graph <- plot_ly(labels = outcome_counts$outcome_status, 
+                values = outcome_counts$n, 
+                type = 'pie', # Creating a pie graph for the outcome data
+                textinfo = 'percent')
+
+# Set layout options
+Interactive_Pie_graph <- Interactive_Pie_graph %>% layout(title = "Outcome Status of Crimes",
+                        showlegend = TRUE)
+
+# Display the plot
+Interactive_Pie_graph
+```
+
+The pie chart illustrates outcomes of crime investigations, revealing that 38.6% conclude without suspect identification and 28.5% cannot proceed to prosecution. A significant 9.84% of cases are actively under investigation. Smaller fractions represent varied outcomes, including awaiting court decisions and referrals to other organizations, highlighting the multifaceted nature of criminal case resolutions.
+
+```{r,warning = FALSE, fig.align='center'}
+# Create the histogram
+Avg_temp_hist <- ggplot(final_data, aes(x = TemperatureCAvg)) +
+  geom_histogram(bins = 30, fill = "lightblue", color = "black") + 
+  labs(title = "Histogram of Average Temperature", 
+       x = "Average Temperature (°C)",
+       y = "Frequency") +
+  theme_minimal()
+
+# Display the histogram
+Avg_temp_hist
+```
+This histogram charts the frequency of average temperatures, displaying prominent peaks in cooler and warmer ranges, hinting at a bimodal climate pattern with distinct hot and cold periods. It's used to discern temperature trends, which are critical for understanding seasonal impacts on energy use, health, and possibly crime rates.
+
+```{r, warning=FALSE, fig.align='center'}
+# Group by visibility level and count the number of rows per group
+scatter_data <- final_data %>%
+  group_by(VisKm) %>%
+  summarise(IncidentCount = n())
+
+# Create the scatter plot
+Visibility_scatter_plot <- ggplot(scatter_data, aes(x = VisKm, y = IncidentCount)) +
+  geom_point(aes(color = VisKm), size = 2, alpha = 0.6) +  # Color points by VisKm and adjust size for visibility
+  labs(title = "Visibility vs. Number of Incidents",
+       x = "Visibility (Km)",
+       y = "Number of Incidents") +
+  theme_minimal()  # Use a minimal theme for a clean look
+
+# Display the scatter plot
+Visibility_scatter_plot
+
+```
+A scatter plot is used here to investigate the relationship between visibility conditions and the number of incidents reported. The data shown reveals that incidents occur across a wide range of visibility conditions without a discernible pattern.
+
+```{r, warning=FALSE, fig.align='center'}
+# Create the density plot
+Windspeed_density_plot <- ggplot(final_data, aes(x = WindkmhInt)) +
+  geom_density(fill = "coral") +
+  labs(title = "Density of Wind Speed Intensity",
+       x = "Wind Speed (km/h)",
+       y = "Density") +
+  theme_minimal()
+
+# Display the density plot
+Windspeed_density_plot
+```
+
+The density plot maps out wind speed frequencies and their relationship to crime occurrences. It reveals that lower wind speeds correlate with higher crime rates, while an increase in wind speed shows a slight decline in crimes, suggesting wind intensity may have an impact on criminal activity.
+
+```{r, warning=FALSE, fig.align='center'}
+# Create the violin plot
+violin_plot <- ggplot(final_data, aes(x = category, y = TemperatureCAvg, fill = category)) +
+  geom_violin() +
+  labs(title = "Temperature Distribution by Crime Category",
+       x = "Crime Category",
+       y = "Average Temperature (°C)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),# Rotating x-axis labels for better readability
+        legend.position = "none") 
+
+# Display the violin plot
+print(violin_plot)
+```
+
+The violin plot show how crime frequencies vary with average temperatures, providing insight into potential links between weather and crime rates. Each 'violin' shape relates a crime category with temperature, its width reflecting how often crimes happen at certain temperatures. By analyzing the fullness and stretch of these shapes, we can determine if specific crimes are notably more common in warmer or colder weather, informing law enforcement strategies and enhancing public safety measures.
+
+```{r, warning=FALSE, fig.align='center'}
+library(ggcorrplot)
+# Select numerical columns for correlation analysis
+num_data <- final_data[, c("TemperatureCAvg", "WindkmhInt", "Precmm", "HrAvg", "VisKm", "WindkmhGust","TotClOct","lowClOct")]
+
+# Calculate correlation matrix
+cor_mat <- cor(num_data)
+
+ggcorrplot(cor_mat, hc.order = TRUE)
+```
+This correlation matrix heatmap is used to discern the strength and direction of relationships between various weather variables, such as visibility, average temperature, precipitation, and wind speed. Red squares indicate a strong positive correlation, blue squares suggest a strong negative correlation, and lighter colors represent weaker relationships.For instance, a notable red square at the intersection of 'TemperatureCAvg' and 'HrAvg' suggests these variables tend to increase together, which could have implications for understanding weather patterns and their potential influence on daily activities, including crime rates. 
+
+```{r,warning=FALSE, fig.align='center'}
+# Creating a new column and adding a random day (01) to change the data type from character to date and changing character datatype to Date type
+final_data$newdate <- as.Date(paste(final_data$date, "-01", sep = ""), format = "%Y-%m-%d")
+
+# Correcting the plot by keeping newdate as Date for accurate time series plotting
+time_plot <- ggplot(final_data, aes(x = newdate)) +
+  geom_line(aes(y = HrAvg, color = "blue")) +
+  geom_line(aes(y = Precmm, color = "red")) +
+  geom_line(aes(y = VisKm, color = "green")) +
+  geom_line(aes(y = WindkmhGust, color = "orange")) +
+  geom_line(aes(y = TemperatureCAvg, color = "purple")) +
+  geom_line(aes(y = WindkmhInt, color = "brown")) +
+  labs(title = "Time Series Plot of Weather Variables",
+       x = "Date", y = "Value") +
+  theme_minimal()
+
+# Display the time series plot
+print(time_plot)
+```
+The time series plot presents the trend of different weather variables throughout the year 2023. Each line, coded with a color, represents a unique weather metric, such as temperature, humidity, or wind speed, showing how each varies over time. This plot is instrumental in pinpointing seasonal patterns and fluctuations, which can be critical for analyzing their potential influence on various aspects of life, including crime occurrence.
+
+
+```{r, warning=FALSE,fig.align='center'}
+# Create a scatter plot of Average Temperature over Time with a smoothing line
+scatter_plot_smoothing <- ggplot(final_data, aes(x = newdate, y = TemperatureCAvg)) +
+  geom_point(aes(color = TemperatureCAvg), alpha = 0.6) +  # Points colored by temperature value
+  geom_smooth(method = "loess", color = "red", se = FALSE) +  # Add LOESS smoothing line, no confidence interval
+  labs(title = "Scatter Plot of Average Temperature with Trend Line",
+       x = "Date", y = "Average Temperature (°C)") +
+  scale_color_gradient(low = "blue", high = "red") +  # Gradient color for points
+  theme_minimal()
+
+# Display the scatter plot with smoothing
+print(scatter_plot_smoothing)
+```
+The scatter plot with a smoothing trend line represents average daily temperatures throughout the year 2023. Data points, colored from purple to red, indicate average temperatures on specific days, with the color gradient reflecting the temperature value. The fitted curve shows the general pattern of temperatures across the year, rising to a peak in mid-year, likely indicating summer, before falling, which suggests the transition to cooler seasons. The plot highlights the cyclical nature of temperature changes over time.
+
+```{r,warning=FALSE,fig.align='center'}
+library(leaflet)
+library(RColorBrewer)
+
+# Create a color palette that ranges from cool to warm colors
+pal <- colorNumeric(palette = "viridis", domain = crime_data$TemperatureCAvg)
+
+# Create Leaflet map
+real_time_map <- leaflet(final_data) %>%
+  addTiles() %>%  
+  addCircleMarkers(~long, ~lat, label = ~paste("Temp:", TemperatureCAvg, "°C"),
+                   color = ~pal(TemperatureCAvg), radius = 5, opacity = 0.8, fillOpacity = 0.8) %>%
+  addLegend("bottomright", pal = pal, values = ~TemperatureCAvg, 
+            title = "Average Temperature (°C)",
+            opacity = 1) %>%
+  setView(lng = mean(crime_data$long), lat = mean(crime_data$lat), zoom = 10)
+
+# Display the map
+real_time_map
+```
+The map provides a visual correlation between crime incidents and average temperature in Colchester. Colored dots, with hues ranging from purple to yellow, represent crime locations, with the color indicating the temperature at the time of the incident. Purple signifies cooler temperatures, and yellow indicates warmer conditions. This heatmap-like overlay on a geographical map allows for the analysis of how crime occurrences might correlate with temperature variations within different areas of the city.
+
+
+
+
+## Story Writing
+
+### Analysis of the crime and weather data in Colchester
+
+In the town of Colchester in the year 2023, a comprehensive analysis of crime data showcased valuable insights into the relation between weather conditions and criminal activity across the Town. The data showed a vivid picture of the town's crime landscape, with violent offenses like assault dominating the other crimes , overshadowing other types of crimes such as theft, anti-social-behaviour and burglary. This dominance of violent crimes was evident with the help of graphical representations like bar, which shows that the violent crimes have higher records. These graphical representations served as visual tools to show crime trends over time. For instance, the bar chart illustrated how theft and burglary, while less frequent, still posed significant challenges for law enforcement. This nuanced understanding of crime dynamics underscores the importance of considering various crime categories when devising strategies for crime prevention and intervention.
+
+Further exploration into the data unveiled a compelling correlation between temperature and crime frequency, sparking curiosity about the potential interplay between weather conditions and human behaviour. The analysis illuminated a noteworthy trend: as temperatures rose, so did the incidence of violent crime, providing potential hint that correlation exist between the climate change and crime behaviour. This intriguing finding was boosted by the vivid depiction provided by the violin plot, which vividly illustrated how warmer temperatures said to increase in levels of crime and shifts in human behaviour. Similarly, the violin plot said to have increase in crime at low temperatures. This observation prompted deeper inquiry into the complex interplay between environmental factors and criminal activity.
+
+In a turn of events that caught many off guards, it turns out that how well one can see—or visibility—didn't really change how often crimes happened in Colchester. The scatter plot, which is a type of graph, showed us that crimes happened just as much on clear days as they did on foggy ones. This was a curveball because most people think that if you can't see well, more crimes will happen. It's like when you can't see in a dark room, you might think it's easier for someone to get away with something sneaky. But the data told a different story. This plot, with its little dots scattered about, asks us to look deeper, to think harder about what makes someone decide to commit a crime when there is day light. It's a bit like a detective novel, where the obvious suspect isn't the one who did it, and now we have to search for more clues.
+
+Mapping crime incidents against temperature gradients showed us something interesting. In places where the temperature is usually warmer, coincided with more number of crime rates.  This spatial analysis shows the potential influence of weather patterns which can provide insight on the criminal behavior, highlighting the importance of considering geographical dynamics in understanding crime phenomena.  This kind of map helps us see that maybe the weather has something to do with where and when crimes happen. It's like realizing that on hot days, more people go to the beach. In the same way, hot spots on the map might mean more police should be around there. 
+
+Moreover, a comprehensive correlation matrix unveiled intricate relationships between various weather variables, including temperature, precipitation, and wind, providing a sufficient evidence of their interconnectedness and potential impact on driving crime data. This statistical analysis provided valuable insights into the complex interplay between weather dynamics and criminal activity. Understanding these patterns is really useful for the police and anyone who cares about keeping people safe. It's like having a playbook that helps them make smart moves to protect the community.
+
+In summary, the data portrayed Colchester as a town where weather conditions appeared to exert a discernible influence on patterns of criminal behavior. The findings suggested that warmer temperatures, calm weather, and specific weather patterns might be associated with heightened levels of crime activity, underscoring the need for nuanced approaches to crime prevention and resource allocation. This understanding has the potential to inform strategic interventions aimed at addressing underlying factors contributing to crime rates and promoting community well-being in Colchester and beyond.
+
+### Conclusion
+
+In conclusion, our investigation into the interplay between weather conditions and crime rates in Colchester has uncovered significant insights. We've found that certain weather conditions, particularly warmer temperatures and calm days, are associated with higher crime rates. This suggests that factors beyond immediate human control can influence the ebb and flow of criminal activity. Recognizing these patterns allows us to approach public safety with a more strategic mindset, tailoring interventions to effectively mitigate risks and enhance community welfare. By integrating weather data into crime prevention strategies, law enforcement can not only respond more adeptly but also anticipate and prevent potential increases in crime. This holistic approach could serve as a model for other towns, expanding our understanding of crime prevention and community care in diverse environments.
+
+## References
+
+1.Sievert, C. (2020). Interactive Web-Based Data Visualization with R, plotly, and shiny. Chapman and Hall/CRC. https://plotly-r.com
+
+2.ggplot2: Wickham, H. (2016). ggplot2: Elegant Graphics for Data Analysis. Springer-Verlag New York. https://ggplot2.tidyverse.org
